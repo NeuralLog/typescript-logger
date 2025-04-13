@@ -1,0 +1,65 @@
+{
+  "name": "@neurallog/logger",
+  "version": "1.0.0",
+  "description": "TypeScript logger for NeuralLog - Zero-knowledge logging with AI integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "ai",
+    "logging",
+    "mcp",
+    "typescript"
+  ],
+  "author": "NeuralLog Team",
+  "license": "MIT",
+  "dependencies": {
+    "@neurallog/shared": "^1.2.0",
+    "@neurallog/client-sdk": "^0.1.0",
+    "axios": "^1.6.0"
+  },
+  "peerDependencies": {
+    "bunyan": "^1.8.0",
+    "loglevel": "^1.8.0",
+    "pino": "^8.0.0",
+    "winston": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "winston": {
+      "optional": true
+    },
+    "bunyan": {
+      "optional": true
+    },
+    "pino": {
+      "optional": true
+    },
+    "loglevel": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/bunyan": "^1.8.11",
+    "@types/jest": "^29.5.0",
+    "@types/loglevel": "^1.6.0",
+    "@types/node": "^20.0.0",
+    "@types/pino": "^7.0.0",
+    "@types/winston": "^2.4.0",
+    "bunyan": "^1.8.0",
+    "jest": "^29.5.0",
+    "loglevel": "^1.8.0",
+    "pino": "^8.0.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0",
+    "winston": "^3.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "src/transports/**/*.md"
+  ]
+}

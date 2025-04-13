@@ -1,0 +1,20 @@
+{
+  "serverUrl": "http://localhost:3030",
+  "logLevels": {
+    "default": "info",
+    "patterns": [
+      {
+        "pattern": "src/server/**",
+        "level": "warn"
+      },
+      {
+        "pattern": "component/ui.tsx",
+        "level": "debug"
+      },
+      {
+        "pattern": "auth/*",
+        "level": "error"
+      }
+    ]
+  }
+}
