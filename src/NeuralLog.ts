@@ -1,8 +1,8 @@
-import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { LogEntry, LogResponse, LogNamesResponse, LogStatistics, AggregateStatistics } from '@neurallog/shared';
+import { NeuralLogClient } from './NeuralLogClient';
 
 /**
  * Log levels
@@ -185,19 +185,11 @@ export class Logger {
         ...data
       };
 
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Tenant-ID': 'default'
-      };
-
-      // Add API key if available
-      if (this.apiKey) {
-        headers['X-API-Key'] = this.apiKey;
-      }
+      // Get client instance
+      const client = NeuralLog.getClient();
 
       // Send log to server
-      await axios.post(`${this.serverUrl}/logs/${this.logName}`, logData, { headers });
+      await client.log(this.logName, logData);
 
       return this;
     } catch (error) {
@@ -584,6 +576,24 @@ class ConfigManager {
 
 export class NeuralLog {
   private static configManager = ConfigManager.getInstance();
+  private static client: NeuralLogClient | null = null;
+
+  /**
+   * Get the NeuralLogClient instance
+   *
+   * @returns The NeuralLogClient instance
+   */
+  public static getClient(): NeuralLogClient {
+    if (!this.client) {
+      const serverUrl = this.configManager.getServerUrl();
+      const authUrl = this.configManager.getAuthServiceUrl();
+      const apiKey = this.configManager.getApiKey();
+
+      this.client = new NeuralLogClient(serverUrl, authUrl, 'default', apiKey);
+    }
+
+    return this.client;
+  }
 
   /**
    * Configure global options for the NeuralLog
@@ -591,16 +601,21 @@ export class NeuralLog {
    * @param options Global options
    */
   public static configure(options: GlobalOptions): void {
+    let configChanged = false;
+
     if (options.serverUrl) {
       this.configManager.setServerUrl(options.serverUrl);
+      configChanged = true;
     }
 
     if (options.apiKey) {
       this.configManager.setApiKey(options.apiKey);
+      configChanged = true;
     }
 
     if (options.authServiceUrl) {
       this.configManager.setAuthServiceUrl(options.authServiceUrl);
+      configChanged = true;
     }
 
     if (options.defaultLogLevel) {
@@ -612,6 +627,11 @@ export class NeuralLog {
         this.configManager.addLogLevelPattern(pattern, level);
       }
     }
+
+    // Reset client if configuration changed
+    if (configChanged) {
+      this.client = null;
+    }
   }
 
   /**
@@ -622,56 +642,32 @@ export class NeuralLog {
    * @returns Logger instance
    */
   public static Log(logName: string, options: LoggerOptions = {}): Logger {
-    return new Logger(logName, this.configManager.getServerUrl(), options);
+    // Create a new logger with the configured server URL
+    const serverUrl = this.configManager.getServerUrl();
+    const apiKey = this.configManager.getApiKey();
+
+    // Initialize the client if not already initialized
+    this.getClient();
+
+    return new Logger(logName, serverUrl, {
+      ...options,
+      apiKey: options.apiKey || apiKey
+    });
   }
 
   /**
    * Search logs
    *
    * @param criteria Search criteria
-   * @param serverUrl Optional server URL (defaults to the configured server URL)
    * @returns Search results
    */
-  public static async search(criteria: SearchCriteria = {}, serverUrl?: string): Promise<any[]> {
+  public static async search(criteria: SearchCriteria = {}): Promise<any[]> {
     try {
-      const url = serverUrl || this.configManager.getServerUrl();
+      // Get client instance
+      const client = this.getClient();
 
-      // Prepare search parameters
-      const params: Record<string, any> = {};
-
-      // Add basic search parameters
-      if (criteria.query) params.query = criteria.query;
-      if (criteria.logName) params.log_name = criteria.logName;
-      if (criteria.limit) params.limit = criteria.limit;
-      if (criteria.startTime) params.start_time = criteria.startTime;
-      if (criteria.endTime) params.end_time = criteria.endTime;
-
-      // Add field filters with field_ prefix
-      if (criteria.fieldFilters) {
-        for (const [field, value] of Object.entries(criteria.fieldFilters)) {
-          params[`field_${field}`] = value;
-        }
-      }
-
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Tenant-ID': 'default'
-      };
-
-      // Add API key if available
-      const apiKey = this.configManager.getApiKey();
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      // Call the server-side search endpoint
-      const response = await axios.get(`${url}/search`, {
-        params,
-        headers
-      });
-
-      return response.data.results || [];
+      // Search logs using the client
+      return await client.search(criteria);
     } catch (error) {
       console.error(`Error searching logs: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
@@ -682,31 +678,15 @@ export class NeuralLog {
    * Get all log names
    *
    * @param limit Maximum number of log names to return
-   * @param serverUrl Optional server URL (defaults to the configured server URL)
    * @returns Log names
    */
-  public static async getLogs(limit: number = 1000, serverUrl?: string): Promise<string[]> {
+  public static async getLogs(limit: number = 1000): Promise<string[]> {
     try {
-      const url = serverUrl || this.configManager.getServerUrl();
+      // Get client instance
+      const client = this.getClient();
 
-      // Prepare headers
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Tenant-ID': 'default'
-      };
-
-      // Add API key if available
-      const apiKey = this.configManager.getApiKey();
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
-
-      const response = await axios.get<LogNamesResponse>(`${url}/logs`, {
-        params: { limit },
-        headers
-      });
-
-      return response.data.logs || [];
+      // Get log names using the client
+      return await client.getLogNames();
     } catch (error) {
       console.error(`Error getting logs: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
